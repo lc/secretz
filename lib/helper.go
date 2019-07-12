@@ -15,10 +15,12 @@ var (
 	c    Config
 )
 
+// Config struct is used to unmarshal our config file into.
 type Config struct {
 	TravisCIOrg string `json:"TravisCIOrgKey"`
 }
 
+// Usage function displays the usage of the tool.
 func Usage() {
 	help := `Usage: secretz -t <organization> [options]
 
@@ -42,6 +44,8 @@ func Usage() {
 	fmt.Printf(help)
 
 }
+
+// GetAPIKey opens the config file and returns an API key
 func GetAPIKey() string {
 	if Exists(path) {
 		data, err := ioutil.ReadFile(path)
@@ -56,6 +60,8 @@ func GetAPIKey() string {
 	CreateOutputDir(home + "/.config/secretz")
 	return c.TravisCIOrg
 }
+
+// SetAPIKey takes an API key and saves it to a config file.
 func SetAPIKey(key string) {
 	c := Config{key}
 	bytes, err := json.Marshal(c)
@@ -70,6 +76,7 @@ func SetAPIKey(key string) {
 	fmt.Printf("Created config file: %s\n", path)
 }
 
+// Exists checks if the location provided exists or not.
 func Exists(loc string) bool {
 	_, err := os.Stat(loc)
 	if err == nil {
@@ -81,6 +88,8 @@ func Exists(loc string) bool {
 	return true
 
 }
+
+// HomeDir returns the user's home directory.
 func HomeDir() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -89,6 +98,8 @@ func HomeDir() string {
 	}
 	return usr.HomeDir
 }
+
+// CreateOrg creates a directory for a given Organization to hold the build logs.
 func CreateOrg(dir string) {
 	CreateOutputDir("output")
 	dir = fmt.Sprintf("output/%s", dir)
@@ -100,6 +111,8 @@ func CreateOrg(dir string) {
 		}
 	}
 }
+
+// CreateOutputDir creates a directory from a given path
 func CreateOutputDir(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.Mkdir(dir, 0755)

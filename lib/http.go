@@ -9,16 +9,19 @@ import (
 	"time"
 )
 
+// GitHubAPI is used to unmarshal Github's API response. This holds usernames.
 type GitHubAPI []struct {
 	Login string `json:"login"`
 }
 
 var key = GetAPIKey()
 
+// Secretz is the http client for the tool.
 var Secretz = &http.Client{
 	Timeout: time.Second * 10,
 }
 
+// OrgMembers queries GitHub's API and gets a list of members for a given org.
 func OrgMembers(target string) (g *GitHubAPI) {
 	memStruct := new(GitHubAPI)
 	target = fmt.Sprintf("https://api.github.com/orgs/%s/public_members", target)
@@ -34,7 +37,7 @@ func OrgMembers(target string) (g *GitHubAPI) {
 	return memStruct
 }
 
-// Query travis-ci API
+// QueryApi is used to query Travis-CI's API
 func QueryApi(target string) (body []byte) {
 	req, err := http.NewRequest("GET", target, nil)
 	if err != nil {
