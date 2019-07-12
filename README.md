@@ -5,7 +5,6 @@
 # secretz
 [![License](https://img.shields.io/badge/license-MIT-_red.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.org/lc/secretz.svg?branch=master)](https://travis-ci.org/lc/secretz)
-[![Go ReportCard](https://goreportcard.com/badge/github.com/lc/secretz)](https://goreportcard.com/report/github.com/lc/secretz)
 
 `secretz` is a tool that minimizes the large attack surface of Travis CI. It automatically fetches repos, builds, and logs for any given organization. 
 
