@@ -17,6 +17,7 @@ import (
 
 var repos []string
 
+// TravisCI is the struct that holds repo slugs.
 type TravisCI struct {
 	Repositories []struct {
 		Slug   string `json:"slug"`
@@ -24,6 +25,7 @@ type TravisCI struct {
 	} `json:"repositories"`
 }
 
+// Builds is the struct that build information from TravisCI
 type Builds struct {
 	Type       string `json:"@type"`
 	Pagination struct {
@@ -57,6 +59,7 @@ func init() {
 	flag.IntVar(&delay, "delay", 600, "delay between requests + random delay/2 jitter")
 }
 
+// Job struct holds a JobID and the Organization name.
 type Job struct {
 	ID  int
 	Org string
@@ -134,7 +137,7 @@ func main() {
 	}
 }
 
-// function to get JSON response and parse it for repo slugs
+// ParseResponse gets the JSON response from Travis and parses it for repo slugs
 func ParseResponse(org string) {
 	for {
 		api := fmt.Sprintf("https://api.travis-ci.org/owner/%s/repos?limit=100&offset=%d", org, len(repos))
@@ -155,7 +158,7 @@ func ParseResponse(org string) {
 	}
 }
 
-// Get all JobId's from builds.
+// GetBuilds gets all JobId's from builds of a repo.
 func GetBuilds(slug string) []int {
 
 	builds := new(Builds)
@@ -198,6 +201,7 @@ func GetBuilds(slug string) []int {
 	return jobs
 }
 
+// SaveLogs saves build logs for given job ids
 func SaveLogs(jobChan chan *Job, resultChan chan string) {
 	for job := range jobChan {
 		api := fmt.Sprintf("https://api.travis-ci.org/job/%d/log.txt", job.ID)
