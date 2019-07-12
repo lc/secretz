@@ -45,8 +45,9 @@ var (
 	timeout     int
 	concurrency int
 	delay       int
-	GetMembers  string
-	targets     []string
+	// GetMembers is a flag with the options: list or scan
+	GetMembers string
+	targets    []string
 )
 
 func init() {
