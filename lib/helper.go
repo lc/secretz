@@ -12,12 +12,14 @@ import (
 var (
 	home = HomeDir()
 	path = home + "/.config/secretz/config.json"
+	defaultTravisCIEndpoint = "api.travis-ci.org"
 	c    Config
 )
 
 // Config struct is used to unmarshal our config file into.
 type Config struct {
-	TravisCIOrg string `json:"TravisCIOrgKey"`
+	TravisCIOrgKey string `json:"TravisCIOrgKey"`
+	TravisCIEndpoint string `json:"TravisCIEndpoint"`
 }
 
 // Usage function displays the usage of the tool.
@@ -34,19 +36,22 @@ func Usage() {
 		Retrieve members of Github Org parameters: [list | scan]
 		
   -setkey string
-		Set API Key for api.travis-ci.org
+		Set API Key for api.travis-ci.org/api.travis-ci.com
+		
+  -setendpoint string
+		Set API endpoint api.travis-ci.org/api.travis-ci.com
 		
   -t string
 		Target organization
 		
   -timeout int
 		Timeout for the tool in seconds (default 30)`
-	fmt.Printf(help)
 
+	fmt.Printf("%s", help)
 }
 
-// GetAPIKey opens the config file and returns an API key
-func GetAPIKey() string {
+// GetConfig opens the config file and returns it
+func GetConfig() Config {
 	if Exists(path) {
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -54,26 +59,72 @@ func GetAPIKey() string {
 		}
 		mErr := json.Unmarshal(data, &c)
 		if mErr != nil {
-			c.TravisCIOrg = ""
+			c.TravisCIOrgKey = ""
+			c.TravisCIEndpoint = defaultTravisCIEndpoint
 		}
 	}
 	CreateOutputDir(home + "/.config/secretz")
-	return c.TravisCIOrg
+	return c
+}
+
+// GetAPIKey opens the config file and returns an API key
+func GetAPIKey() string {
+	return GetConfig().TravisCIOrgKey
+}
+
+// GetEndpoint opens the config file and returns an API endpoint domain
+func GetEndpoint() string {
+	endpoint := GetConfig().TravisCIEndpoint;
+	if endpoint == "" {
+		return defaultTravisCIEndpoint
+	}
+
+	return endpoint
 }
 
 // SetAPIKey takes an API key and saves it to a config file.
 func SetAPIKey(key string) {
-	c := Config{key}
+	c := GetConfig()
+	c.TravisCIOrgKey = key
+
+	_ = writeConfig(c)
+}
+
+// setEndpoint takes an endpoint (domain name) and saves it to a config file.
+func SetEndpoint(endpoint string) {
+	c := GetConfig()
+	c.TravisCIEndpoint = endpoint
+
+	_ = writeConfig(c)
+}
+
+func writeConfig(c Config) error {
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		log.Fatalf("Error marshalling data: %v", err)
+		return err
 	}
+
+	alreadyExisted := Exists(path)
+
 	CreateOutputDir(home + "/.config/secretz/")
 	err = ioutil.WriteFile(path, bytes, 0644)
 	if err != nil {
-		log.Fatalf("Error creating config file: %v\n", err)
+		if alreadyExisted {
+			log.Fatalf("Error updating config file: %v\n", err)
+		} else {
+			log.Fatalf("Error creating config file: %v\n", err)
+		}
+		return err
 	}
-	fmt.Printf("Created config file: %s\n", path)
+
+	if alreadyExisted {
+		fmt.Printf("Updated config file: %s\n", path)
+	} else {
+		fmt.Printf("Created config file: %s\n", path)
+	}
+
+	return nil
 }
 
 // Exists checks if the location provided exists or not.

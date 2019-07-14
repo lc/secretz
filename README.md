@@ -24,7 +24,8 @@ Built during and for our research on TravisCI: https://edoverflow.com/2019/ci-kn
 | `-delay` | delay between requests + random delay/2 jitter | `secretz -t ExampleCo -delay 900`|
 | `-members [list \| scan]` | Get all GitHub members belonging to Organization and list/scan them | `secretz -t ExampleCo -members scan` |
 | `-timeout` | How long to wait for HTTP Responses from Travis CI | `secretz -t ExampleCo -timeout 20` |
-| `-setkey` | Set API Key for api.travis-ci.org | `secretz -setkey yourapikey` |
+| `-setkey` | Set API Key for api.travis-ci.[org\|com] | `secretz -setkey yourapikey` |
+| `-setendpoint` | Set TravisCI endpoint (domain) | `secretz -endpoint api.travis-ci.com` |
 
 ## Installation:
 

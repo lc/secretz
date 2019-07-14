@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"github.com/lc/secretz/lib"
+	"secretz/lib"
 )
 
 var repos []string
@@ -41,6 +41,7 @@ type Builds struct {
 
 var (
 	setkey      string
+	setendpoint string
 	org         string
 	timeout     int
 	concurrency int
@@ -52,7 +53,8 @@ var (
 
 func init() {
 	flag.Usage = lib.Usage
-	flag.StringVar(&setkey, "setkey", "", "Set API Key for api.travis-ci.org")
+	flag.StringVar(&setkey, "setkey", "", "Set API Key for api.travis-ci.org/api.travis-ci.com")
+	flag.StringVar(&setendpoint, "setendpoint", "", "Set API endpoint api.travis-ci.org/api.travis-ci.com")
 	flag.StringVar(&org, "t", "", "Target organization")
 	flag.IntVar(&timeout, "timeout", 30, "Timeout for the tool in seconds")
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent fetchers")
@@ -64,6 +66,7 @@ func init() {
 type Job struct {
 	ID  int
 	Org string
+	Endpoint string
 }
 
 func main() {
@@ -73,7 +76,12 @@ func main() {
 	if setkey != "" {
 		lib.SetAPIKey(setkey)
 	}
-	if len(org) < 1 || setkey != "" {
+	if setendpoint != "" {
+		lib.SetEndpoint(setendpoint)
+	}
+	endpoint := lib.GetEndpoint()
+
+	if len(org) < 1 || (setkey != "" && setendpoint != "") {
 		log.Fatalf("Usage: %s -t <organization>\n", os.Args[0])
 	}
 	if GetMembers == "" {
@@ -99,7 +107,7 @@ func main() {
 	for _, org := range targets {
 		lib.CreateOrg(org)
 		log.Printf("Fetching repos for %s\n", org)
-		ParseResponse(org)
+		ParseResponse(endpoint, org)
 		log.Printf("Fetching builds for %s's repos\n", org)
 
 		jobChan := make(chan *Job)
@@ -124,9 +132,9 @@ func main() {
 
 		go func() {
 			for _, slug := range repos {
-				builds := GetBuilds(slug)
+				builds := GetBuilds(endpoint, slug)
 				for _, job := range builds {
-					jobChan <- &Job{ID: job, Org: org}
+					jobChan <- &Job{ID: job, Org: org, Endpoint: endpoint}
 				}
 			}
 			close(jobChan)
@@ -139,9 +147,9 @@ func main() {
 }
 
 // ParseResponse gets the JSON response from Travis and parses it for repo slugs
-func ParseResponse(org string) {
+func ParseResponse(endpoint string, org string) {
 	for {
-		api := fmt.Sprintf("https://api.travis-ci.org/owner/%s/repos?limit=100&offset=%d", org, len(repos))
+		api := fmt.Sprintf("https://%s/owner/%s/repos?limit=100&offset=%d", endpoint, org, len(repos))
 		res := lib.QueryApi(api)
 
 		ciResp := new(TravisCI)
@@ -160,15 +168,15 @@ func ParseResponse(org string) {
 }
 
 // GetBuilds gets all JobId's from builds of a repo.
-func GetBuilds(slug string) []int {
+func GetBuilds(endpoint string, slug string) []int {
 
 	builds := new(Builds)
-	jobs := []int{}
+	buildJobIds := []int{}
 	offset := 0
 
 	for {
 		log.Printf("Fetching builds %s [offset: %d]\n", slug, offset)
-		api := fmt.Sprintf("https://api.travis-ci.org/repo/%s/builds?limit=100&offset=%d", url.QueryEscape(slug), offset)
+		api := fmt.Sprintf("https://%s/repo/%s/builds?limit=100&offset=%d", endpoint, url.QueryEscape(slug), offset)
 		res := lib.QueryApi(api)
 
 		// delay + jitter
@@ -188,7 +196,7 @@ func GetBuilds(slug string) []int {
 		i := 0
 		for i < loop {
 			for _, z := range builds.Builds[i].Jobs {
-				jobs = append(jobs, z.JobId)
+				buildJobIds = append(buildJobIds, z.JobId)
 			}
 			i++
 		}
@@ -199,13 +207,13 @@ func GetBuilds(slug string) []int {
 		offset += 100
 	}
 
-	return jobs
+	return buildJobIds
 }
 
 // SaveLogs saves build logs for given job ids
 func SaveLogs(jobChan chan *Job, resultChan chan string) {
 	for job := range jobChan {
-		api := fmt.Sprintf("https://api.travis-ci.org/job/%d/log.txt", job.ID)
+		api := fmt.Sprintf("https://%s/job/%d/log.txt", job.Endpoint, job.ID)
 		// delay + jitter
 		if delay > 0 {
 			time.Sleep((time.Duration(delay + rand.Intn(delay/2))) * time.Millisecond)
