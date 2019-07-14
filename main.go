@@ -12,10 +12,17 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"secretz/lib"
+	"github.com/lc/secretz/lib"
 )
 
-var repos []string
+type travisDomain string
+const travisCICom travisDomain = "api.travis-ci.com"
+const travisCIOrg travisDomain = "api.travis-ci.org"
+
+var (
+	repos      []string
+	targets    []string
+)
 
 // TravisCI is the struct that holds repo slugs.
 type TravisCI struct {
@@ -39,34 +46,37 @@ type Builds struct {
 	} `json:"builds"`
 }
 
+// flags
 var (
 	setkey      string
-	setendpoint string
 	org         string
+	travisCom   bool
 	timeout     int
 	concurrency int
 	delay       int
-	// GetMembers is a flag with the options: list or scan
-	GetMembers string
-	targets    []string
+	// GetMembers is a flag with the options: "list", "scan", "" (empty string)
+	GetMembers  string
 )
 
 func init() {
-	flag.Usage = lib.Usage
+	flag.Usage = func() {
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s -t <organization> [options]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.StringVar(&setkey, "setkey", "", "Set API Key for api.travis-ci.org/api.travis-ci.com")
-	flag.StringVar(&setendpoint, "setendpoint", "", "Set API endpoint api.travis-ci.org/api.travis-ci.com")
 	flag.StringVar(&org, "t", "", "Target organization")
+	flag.BoolVar(&travisCom, "com",  false, "use api.travis-ci.com instead of api.travis-ci.org (default api.travis-ci.org)")
 	flag.IntVar(&timeout, "timeout", 30, "Timeout for the tool in seconds")
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent fetchers")
-	flag.StringVar(&GetMembers, "members", "", "Get GitHub Org Members")
 	flag.IntVar(&delay, "delay", 600, "delay between requests + random delay/2 jitter")
+	flag.StringVar(&GetMembers, "members", "", "Get GitHub Org Members [list|scan]")
 }
 
 // Job struct holds a JobID and the Organization name.
 type Job struct {
 	ID  int
 	Org string
-	Endpoint string
+	Endpoint travisDomain
 }
 
 func main() {
@@ -76,14 +86,16 @@ func main() {
 	if setkey != "" {
 		lib.SetAPIKey(setkey)
 	}
-	if setendpoint != "" {
-		lib.SetEndpoint(setendpoint)
-	}
-	endpoint := lib.GetEndpoint()
 
-	if len(org) < 1 || (setkey != "" && setendpoint != "") {
-		log.Fatalf("Usage: %s -t <organization>\n", os.Args[0])
+	if len(org) < 1 || setkey == "" {
+		log.Fatalf("Usage: %s -t <organization> [options]\n", os.Args[0])
 	}
+
+	endpoint := travisCIOrg
+	if travisCom {
+		endpoint = travisCICom
+	}
+
 	if GetMembers == "" {
 		targets = append(targets, org)
 	} else {
@@ -147,7 +159,7 @@ func main() {
 }
 
 // ParseResponse gets the JSON response from Travis and parses it for repo slugs
-func ParseResponse(endpoint string, org string) {
+func ParseResponse(endpoint travisDomain, org string) {
 	for {
 		api := fmt.Sprintf("https://%s/owner/%s/repos?limit=100&offset=%d", endpoint, org, len(repos))
 		res := lib.QueryApi(api)
@@ -168,8 +180,7 @@ func ParseResponse(endpoint string, org string) {
 }
 
 // GetBuilds gets all JobId's from builds of a repo.
-func GetBuilds(endpoint string, slug string) []int {
-
+func GetBuilds(endpoint travisDomain, slug string) []int {
 	builds := new(Builds)
 	buildJobIds := []int{}
 	offset := 0
