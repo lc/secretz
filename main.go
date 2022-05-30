@@ -11,9 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/json-iterator/go"
-	"github.com/lc/secretz/lib"
+	"secretz/lib"
 )
+
+import jsoniter "github.com/json-iterator/go"
 
 var repos []string
 
